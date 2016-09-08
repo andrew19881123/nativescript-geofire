@@ -1,0 +1,48 @@
+{
+  "name": "nativescript-geofire",
+  "description": "Location-based querying and filtering using Firebase for Nativescript",
+  "version": "0.0.0",
+  "author": "Andrea Veronesi (https://github.com/andrew19881123)",
+  "homepage": "https://github.com/andrew19881123/nativescript-geofire",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrew19881123/nativescript-geofire.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andrew19881123/nativescript-geofire/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "nativescript",
+    "geoquery",
+    "location",
+    "firebase",
+    "realtime",
+    "geolocation"
+  ],
+  "main": "dist/geofire.js",
+  "files": [
+    "dist/**",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "dependencies": {
+    
+  },
+  "devDependencies": {
+    "coveralls": "^2.11.4",
+    "gulp": "^3.9.0",
+    "gulp-concat": "^2.6.0",
+    "gulp-ext-replace": "^0.3.0",
+    "gulp-jshint": "^2.0.1",
+    "gulp-uglify": "^2.0.0",
+    "jshint-stylish": "^2.0.1",
+    "run-sequence": "^1.2.2",
+    "streamqueue": "^1.1.1"
+  },
+  "scripts": {
+    "test": "gulp test",
+    "travis": "gulp"
+  }
+}

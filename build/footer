@@ -1,0 +1,4 @@
+  return GeoFire;
+})();
+
+module.exports = GeoFire;
