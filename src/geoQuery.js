@@ -29,14 +29,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
     });
   }
 
-  /**
-   * Fires each callback for the "ready" event.
-   */
-  function _fireReadyEventCallbacks() {
-    _callbacks.ready.forEach(function(callback) {
-      callback();
-    });
-  }
 
   /**
    * Decodes a query string to a query
@@ -66,17 +58,21 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
   }
 
   /**
+   * TODO
    * Turns off all callbacks for the provide geohash query.
    *
    * @param {Array.<string>} query The geohash query.
    * @param {Object} queryState An object storing the current state of the query.
    */
   function _cancelGeohashQuery(query, queryState) {
+    _firebase.removeEventListener(listener, query);
+    /*
     var queryRef = _firebaseRef.orderByChild("g").startAt(query[0]).endAt(query[1]);
     queryRef.off("child_added", queryState.childAddedCallback);
     queryRef.off("child_removed", queryState.childRemovedCallback);
     queryRef.off("child_changed", queryState.childChangedCallback);
     queryRef.off("value", queryState.valueCallback);
+    */
   }
 
   /**
@@ -200,8 +196,8 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    *
    * @param {Firebase DataSnapshot} locationDataSnapshot A snapshot of the data stored for this location.
    */
-  function _childAddedCallback(locationDataSnapshot) {
-    _updateLocation(getKey(locationDataSnapshot), decodeGeoFireObject(locationDataSnapshot.val()));
+  function _childAddedCallback(k,v) {
+    _updateLocation(k, decodeGeoFireObject(v));
   }
 
   /**
@@ -209,8 +205,8 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    *
    * @param {Firebase DataSnapshot} locationDataSnapshot A snapshot of the data stored for this location.
    */
-  function _childChangedCallback(locationDataSnapshot) {
-    _updateLocation(getKey(locationDataSnapshot), decodeGeoFireObject(locationDataSnapshot.val()));
+  function _childChangedCallback(k,v) {
+    _updateLocation(k, decodeGeoFireObject(v));
   }
 
   /**
@@ -218,11 +214,11 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    *
    * @param {Firebase DataSnapshot} locationDataSnapshot A snapshot of the data stored for this location.
    */
-  function _childRemovedCallback(locationDataSnapshot) {
-    var key = getKey(locationDataSnapshot);
+  function _childRemovedCallback(k,v) {
+    var key = k;
     if (_locationsTracked.hasOwnProperty(key)) {
       _firebaseRef.child(key).once("value", function(snapshot) {
-        var location = snapshot.val() === null ? null : decodeGeoFireObject(snapshot.val());
+        var location = v === null ? null : decodeGeoFireObject(v);
         var geohash = (location !== null) ? encodeGeohash(location) : null;
         // Only notify observers if key is not part of any other geohash query or this actually might not be
         // a key exited event, but a key moved or entered event. These events will be triggered by updates
@@ -235,23 +231,7 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
   }
 
   /**
-   * Called once all geohash queries have received all child added events and fires the ready
-   * event if necessary.
-   */
-  function _geohashQueryReadyCallback(queryStr) {
-    var index = _outstandingGeohashReadyEvents.indexOf(queryStr);
-    if (index > -1) {
-      _outstandingGeohashReadyEvents.splice(index, 1);
-    }
-    _valueEventFired = (_outstandingGeohashReadyEvents.length === 0);
-
-    // If all queries have been processed, fire the ready event
-    if (_valueEventFired) {
-      _fireReadyEventCallbacks();
-    }
-  }
-
-  /**
+   * TODO
    * Attaches listeners to Firebase which track when new geohashes are added within this query's
    * bounding box.
    */
@@ -288,9 +268,7 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
       _cleanUpCurrentGeohashesQueriedTimeout = setTimeout(_cleanUpCurrentGeohashesQueried, 10);
     }
 
-    // Keep track of which geohashes have been processed so we know when to fire the "ready" event
-    _outstandingGeohashReadyEvents = geohashesToQuery.slice();
-
+    
     // Loop through each geohash to query for and listen for new geohashes which have the same prefix.
     // For every match, attach a value callback which will fire the appropriate events.
     // Once every geohash to query is processed, fire the "ready" event.
@@ -299,37 +277,48 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
       var query = _stringToQuery(toQueryStr);
 
       // Create the Firebase query
-      var firebaseQuery = _firebaseRef.orderByChild("g").startAt(query[0]).endAt(query[1]);
+      var onQueryEvent = function(result) {
+        if (!result.error) {
+          if(result.type=="ChildAdded"){
+            _childAddedCallback(result.key, result.value);
+          } else if(result.type=="ChildRemoved"){
+            _childRemovedCallback(result.key, result.value);
+          } else if(result.type=="ChildChanged"){
+            _childChangedCallback(result.key, result.value);
+          }
+        }
+      };
 
-      // For every new matching geohash, determine if we should fire the "key_entered" event
-      var childAddedCallback = firebaseQuery.on("child_added", _childAddedCallback);
-      var childRemovedCallback = firebaseQuery.on("child_removed", _childRemovedCallback);
-      var childChangedCallback = firebaseQuery.on("child_changed", _childChangedCallback);
-
-      // Once the current geohash to query is processed, see if it is the last one to be processed
-      // and, if so, mark the value event as fired.
-      // Note that Firebase fires the "value" event after every "child_added" event fires.
-      var valueCallback = firebaseQuery.on("value", function() {
-        firebaseQuery.off("value", valueCallback);
-        _geohashQueryReadyCallback(toQueryStr);
-      });
+      _firebase.query(
+          onQueryEvent,
+          _firebaseDst,
+          {
+              // default false, so it listens continuously.
+              singleEvent: false,
+              orderBy: {
+                  type: firebase.QueryOrderByType.CHILD,
+                  value: 'g' // mandatory when type is 'child'
+              },
+              ranges: [
+                {
+                    type: firebase.QueryRangeType.START_AT,
+                    value: query[0]
+                },
+                {
+                    type: firebase.QueryRangeType.END_AT,
+                    value: query[1]
+                }
+              ]
+          }
+      );
 
       // Add the geohash query to the current geohashes queried dictionary and save its state
       _currentGeohashesQueried[toQueryStr] = {
         active: true,
-        childAddedCallback: childAddedCallback,
-        childRemovedCallback: childRemovedCallback,
-        childChangedCallback: childChangedCallback,
-        valueCallback: valueCallback
+        childAddedCallback: childAddedCallback //FIXME
       };
     });
-    // Based upon the algorithm to calculate geohashes, it's possible that no "new"
-    // geohashes were queried even if the client updates the radius of the query.
-    // This results in no "READY" event being fired after the .updateQuery() call.
-    // Check to see if this is the case, and trigger the "READY" event.
-    if(geohashesToQuery.length === 0) {
-      _geohashQueryReadyCallback();
-    }
+    
   }
 
   /********************/
@@ -394,8 +383,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
       }
     }
 
-    // Reset the variables which control when the "ready" event fires
-    _valueEventFired = false;
 
     // Listen for new geohashes being added to GeoFire and fire the appropriate events
     _listenForNewGeohashes();
@@ -432,8 +419,8 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    */
   this.on = function(eventType, callback) {
     // Validate the inputs
-    if (["ready", "key_entered", "key_exited", "key_moved"].indexOf(eventType) === -1) {
-      throw new Error("event type must be \"ready\", \"key_entered\", \"key_exited\", or \"key_moved\"");
+    if (["key_entered", "key_exited", "key_moved"].indexOf(eventType) === -1) {
+      throw new Error("event type must be \"key_entered\", \"key_exited\", or \"key_moved\"");
     }
     if (typeof callback !== "function") {
       throw new Error("callback must be a function");
@@ -455,13 +442,7 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
       }
     }
 
-    // If this is a "ready" callback, fire it if this query is already ready
-    if (eventType === "ready") {
-      if (_valueEventFired) {
-        callback();
-      }
-    }
-
+    
     // Return an event registration which can be used to cancel the callback
     return new GeoCallbackRegistration(function() {
       _callbacks[eventType].splice(_callbacks[eventType].indexOf(callback), 1);
@@ -475,7 +456,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
   this.cancel = function () {
     // Cancel all callbacks in this query's callback list
     _callbacks = {
-      ready: [],
       key_entered: [],
       key_exited: [],
       key_moved: []
@@ -511,15 +491,11 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
 
   // Event callbacks
   var _callbacks = {
-    ready: [],
     key_entered: [],
     key_exited: [],
     key_moved: []
   };
 
-  // Variables used to keep track of when to fire the "ready" event
-  var _valueEventFired = false;
-  var _outstandingGeohashReadyEvents;
 
   // A dictionary of locations that a currently active in the queries
   // Note that not all of these are currently within this query
