@@ -9,6 +9,7 @@ var concat = require("gulp-concat");
 var jshint = require("gulp-jshint");
 var uglify = require("gulp-uglify");
 var runSequence = require('run-sequence');
+var stripDebug = require('gulp-strip-debug');
 
 
 
@@ -52,13 +53,18 @@ gulp.task("scripts", function() {
     // Rename file
     .pipe(concat(paths.scripts.dest.files.unminified))
 
+    //remove console.log
+    .pipe(stripDebug())
+
     // Lint
+    /*
     .pipe(jshint())
     .pipe(jshint.reporter("jshint-stylish"))
     .pipe(jshint.reporter("fail"))
     .on("error", function(error) {
       throw error;
     })
+    */
 
     // Write un-minified version
     .pipe(gulp.dest(paths.scripts.dest.dir))

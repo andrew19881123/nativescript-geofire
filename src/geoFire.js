@@ -16,7 +16,7 @@ var GeoFire = function(firebase, firebaseDst) {
    * @return {Firebase} The Firebase instance used to create this GeoFire instance.
    */
   this.dst = function() {
-    return _firebaseDst;
+    return firebaseDst;
   };
 
   /**
@@ -61,7 +61,7 @@ var GeoFire = function(firebase, firebaseDst) {
       }
     });
 
-    return _firebase.update(_firebaseDst, newData);
+    return firebase.update(firebaseDst, newData);
   };
 
   /**
@@ -75,16 +75,16 @@ var GeoFire = function(firebase, firebaseDst) {
   this.get = function(key) {
     validateKey(key);
 
-    return _firebase.query(
+    return firebase.query(
               function(){},
-              _firebaseDst,
+              firebaseDst,
               {
                   // Only when true this function will return the date in the promise as well!
                   singleEvent: true,
                   // order by company.country
                   orderBy: {
                       type: firebase.QueryOrderByType.CHILD,
-                      value: 'since' // mandatory when type is 'child'
+                      value: "since" // mandatory when type is 'child'
                   },
                   range: {
                       type: firebase.QueryRangeType.EQUAL_TO,
@@ -125,7 +125,7 @@ var GeoFire = function(firebase, firebaseDst) {
    * @return {GeoQuery} A new GeoQuery object.
    */
   this.query = function(queryCriteria) {
-    return new GeoQuery(_firebase, _firebaseDst, queryCriteria);
+    return new GeoQuery(firebase, firebaseDst, queryCriteria);
   };
 
   /*****************/
@@ -134,14 +134,11 @@ var GeoFire = function(firebase, firebaseDst) {
   if (typeof firebaseDst !== "string") {
     throw new Error("firebaseDst must be a string");
   }
-
   //TODO check firebase
 
-  var _firebase = firebase;
-  var _firebaseDst = firebaseDst;
 };
 
 
 GeoFire.distance = function(location1, location2) {
-  calculateDistance(location1, location2);
+  return calculateDistance(location1, location2);
 };

@@ -27,15 +27,14 @@
     "README.md",
     "package.json"
   ],
-  "dependencies": {
-    
-  },
+  "dependencies": {},
   "devDependencies": {
     "coveralls": "^2.11.4",
     "gulp": "^3.9.0",
     "gulp-concat": "^2.6.0",
     "gulp-ext-replace": "^0.3.0",
     "gulp-jshint": "^2.0.1",
+    "gulp-strip-debug": "^1.1.0",
     "gulp-uglify": "^2.0.0",
     "jshint-stylish": "^2.0.1",
     "run-sequence": "^1.2.2",
