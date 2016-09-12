@@ -54,7 +54,7 @@ gulp.task("scripts", function() {
     .pipe(concat(paths.scripts.dest.files.unminified))
 
     //remove console.log
-    .pipe(stripDebug())
+    //.pipe(stripDebug())
 
     // Lint
     /*

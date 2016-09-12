@@ -20,7 +20,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    * @param {?double} distanceFromCenter The distance from the center or null.
    */
   function _fireCallbacksForKey(eventType, key, location, distanceFromCenter) {
-    console.log("_fireCallbacksForKey: "+JSON.stringify(eventType)+" | "+JSON.stringify(key)+" | "+JSON.stringify(location)+" | "+JSON.stringify(distanceFromCenter));
     _callbacks[eventType].forEach(function(callback) {
       if (typeof location === "undefined" || location === null) {
         callback(key, null, null);
@@ -70,7 +69,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    */
   function _cancelGeohashQuery(listeners, path) {
     firebase.removeEventListeners(listeners, path);
-    
   }
 
   /**
@@ -125,7 +123,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    * @param {?Array.<number>} location The location as [latitude, longitude] pair.
    */
   function _updateLocation(key, location) {
-    console.log("_updateLocation: "+JSON.stringify(key)+" | "+JSON.stringify(location));
     validateLocation(location);
     // Get the key and location
     var distanceFromCenter, isInQuery;
@@ -134,9 +131,7 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
 
     // Determine if the location is within this query
     distanceFromCenter = GeoFire.distance(location, _center);
-    console.log("distanceFromCenter: "+distanceFromCenter);
     isInQuery = (distanceFromCenter <= _radius);
-    console.log("isInQuery: "+isInQuery);
 
     // Add this location to the locations queried dictionary even if it is not within this query
     _locationsTracked[key] = {
@@ -145,7 +140,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
       isInQuery: isInQuery,
       geohash: encodeGeohash(location, g_GEOHASH_PRECISION)
     };
-    console.log("_locationsTracked: "+JSON.stringify(_locationsTracked));
 
     // Fire the "key_entered" event if the provided key has entered this query
     if (isInQuery && !wasInQuery) {
@@ -203,7 +197,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    * @param {Firebase DataSnapshot} locationDataSnapshot A snapshot of the data stored for this location.
    */
   function _childAddedCallback(k,v) {
-    console.log("_childAddedCallback(k,v): "+JSON.stringify(k)+" | "+JSON.stringify(v));
     _updateLocation(k, decodeGeoFireObject(v));
   }
 
@@ -214,7 +207,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    * @param {Firebase DataSnapshot} locationDataSnapshot A snapshot of the data stored for this location.
    */
   function _childChangedCallback(k,v) {
-    console.log("_childChangedCallback(k,v): "+JSON.stringify(k)+" | "+JSON.stringify(v));
     _updateLocation(k, decodeGeoFireObject(v));
   }
 
@@ -226,7 +218,6 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    */
   
   function _childRemovedCallback(k,v) {
-    console.log("_childRemovedCallback(k,v): "+JSON.stringify(k)+" | "+JSON.stringify(v));
     if (_locationsTracked.hasOwnProperty(k)) {
       var location = v === null ? null : decodeGeoFireObject(v);
       var geohash = (location !== null) ? encodeGeohash(location) : null;
@@ -246,27 +237,21 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
    * bounding box.
    */
   function _listenForNewGeohashes() {
-    console.log("_listenForNewGeohashes begin");
     // Get the list of geohashes to query
     var geohashesToQuery = geohashQueries(_center, _radius*1000).map(_queryToString);
-    console.log("geohashesToQuery before: "+JSON.stringify(geohashesToQuery));
     // Filter out duplicate geohashes
     geohashesToQuery = geohashesToQuery.filter(function(geohash, i){
       return geohashesToQuery.indexOf(geohash) === i;
     });
-    console.log("geohashesToQuery after: "+JSON.stringify(geohashesToQuery));
 
     // For all of the geohashes that we are already currently querying, check if they are still
     // supposed to be queried. If so, don't re-query them. Otherwise, mark them to be un-queried
     // next time we clean up the current geohashes queried dictionary.
-    console.log("_currentGeohashesQueried: "+JSON.stringify(_currentGeohashesQueried));
     var keys = Object.keys(_currentGeohashesQueried);
     var numKeys = keys.length;
     for (var i = 0; i < numKeys; ++i) {
       var geohashQueryStr = keys[i];
-      console.log("geohashQueryStr: "+JSON.stringify(geohashQueryStr));
       var index = geohashesToQuery.indexOf(geohashQueryStr);
-      console.log("index: "+JSON.stringify(index));
       if (index === -1) {
         _currentGeohashesQueried[geohashQueryStr].active = false;
       }
@@ -290,11 +275,9 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
     geohashesToQuery.forEach(function(toQueryStr) {
       // decode the geohash query string
       var query = _stringToQuery(toQueryStr);
-      console.log("query: "+JSON.stringify(query));
 
       // Create the Firebase query
       var onQueryEvent = function(result) {
-        console.log("onQueryEvent result: "+JSON.stringify(result));
         if (!result.error) {
           if(result.type==="ChildAdded"){
             _childAddedCallback(result.key, result.value);
@@ -328,20 +311,16 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
               ]
           }
       ).then(function(result) {
-        console.log("query result: "+JSON.stringify(result));
 				// Add the geohash query to the current geohashes queried dictionary and save its state
-        console.log("toQueryStr: "+JSON.stringify(toQueryStr));
         _currentGeohashesQueried[toQueryStr] = {
           active: true,
           path: result.path,
           listeners: result.listeners
         };
-        console.log("_currentGeohashesQueried: "+JSON.stringify(_currentGeohashesQueried));
 			}).catch(function(err) {
 				console.log(err);
         throw new Error(err);
 			});
-
       
     });
     
@@ -382,9 +361,7 @@ var GeoQuery = function (firebase, firebaseDst, queryCriteria) {
 
     // Loop through all of the locations in the query, update their distance from the center of the
     // query, and fire any appropriate events
-    console.log("_locationsTracked: "+JSON.stringify(_locationsTracked));
     var keys = Object.keys(_locationsTracked);
-    console.log("keys: "+JSON.stringify(keys));
     var numKeys = keys.length;
     for (var i = 0; i < numKeys; ++i) {
       var key = keys[i];
