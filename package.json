@@ -1,7 +1,7 @@
 {
   "name": "nativescript-geofire",
   "description": "Location-based querying and filtering using Firebase for Nativescript",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "author": "Andrea Veronesi (https://github.com/andrew19881123)",
   "homepage": "https://github.com/andrew19881123/nativescript-geofire",
   "repository": {
